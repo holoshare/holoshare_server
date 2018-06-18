@@ -12,7 +12,7 @@ defmodule HoloshareServerTest.SharedSessionTest do
     type: "sphere",
     id: 4
   }
-  @test_action %{
+  @test_change_action %{
     type: "change",
     action: %{
       id: 4,
@@ -27,6 +27,17 @@ defmodule HoloshareServerTest.SharedSessionTest do
     type: "sphere",
     orientation: %{}
   }
+  @test_add_action %{
+    type: "add",
+    action: @test_object
+  }
+  @test_remove_action %{
+    type: "remove",
+    action: %{
+      id: 4
+    }
+  }
+
 
   setup do
     SharedSession.start_link(name: @name, marker_id: 1)
@@ -64,11 +75,24 @@ defmodule HoloshareServerTest.SharedSessionTest do
     assert SharedSession.get_session(@name).objects == []
   end
 
-  test "Preform action" do
+  test "Preform action change" do
     SharedSession.add_object(@name, @test_object)
-    SharedSession.preform_action(@name, @test_action)
+    SharedSession.preform_action(@name, @test_change_action)
     obj = SharedSession.get_object(@name, @test_object[:id])
     assert obj == @changed_object
+  end
+
+  test "Preform action add" do
+    SharedSession.preform_action(@name, @test_add_action)
+    assert SharedSession.get_session(@name).objects == [@test_object]
+  end
+
+  test "Preform action remove" do
+    SharedSession.add_object(@name, @test_object)
+    assert SharedSession.get_session(@name).objects == [@test_object]
+
+    SharedSession.preform_action(@name, @test_remove_action)
+    assert SharedSession.get_session(@name).objects == []
   end
 
 end
