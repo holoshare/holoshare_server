@@ -1,13 +1,20 @@
 defmodule HoloshareServer.SessionSupervisor do
-  use Supervisor
+  use DynamicSupervisor
 
-  def start_link(opts) do
-    Supervisor.start_link(__MODULE__, :ok, opts)
+  alias HoloshareServer.SharedSession
+
+  @name :session_supervisor
+
+  def start_link(_opts) do
+    DynamicSupervisor.start_link(__MODULE__, :ok, [name: @name])
   end
 
   def init(:ok) do
-    children = []
+    DynamicSupervisor.init(strategy: :one_for_one)
+  end
 
-    Supervisor.init(children, strategy: :one_for_one)
+  def start_child(id) do
+    spec = {SharedSession, name: {:global, id}}
+    DynamicSupervisor.start_child(@name, spec)
   end
 end
