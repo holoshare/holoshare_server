@@ -13,9 +13,10 @@ defmodule HoloshareServer.UDPServer do
 
   def init(:ok) do
     with {:ok, socket} <- :gen_udp.open(@port, [{:active, true}, :binary, :inet]),
-         {:ok, port} <- :inet.port(socket)
+         {:ok, port} <- :inet.port(socket),
+         {:ok, pid} <- MessageHandler.start_link([udp: self()])
       do
-      {:ok, %{socket: socket, port: port}}
+      {:ok, %{socket: socket, port: port, message_handler: pid}}
     else
       error ->
         Logger.error inspect(error)
@@ -36,12 +37,7 @@ defmodule HoloshareServer.UDPServer do
 
   def handle_info({:udp, socket, ip, port, payload}, state) do
     Logger.debug "#{inspect socket} [#{Helpers.format_ip(ip)}] #{inspect port}: #{payload}"
-    case Poison.decode(payload) do
-      {:ok, obj} -> MessageHandler.handle_message(ip, port, obj)
-      {:error, error} ->
-        Logger.error "UDP Payload parse error ... Poison.decode error"
-        Logger.error inspect(error)
-    end
+    MessageHandler.recv_message(state[:message_handler], ip, port, payload)
     {:noreply, state}
   end
 

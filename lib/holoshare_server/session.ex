@@ -1,7 +1,9 @@
 defmodule HoloshareServer.Session do
   defmodule User do
     defstruct username: nil,
-      id: nil
+      id: nil,
+      ip: nil,
+      port: nil
   end
 
   defmodule Object do
