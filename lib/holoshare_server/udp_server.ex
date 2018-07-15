@@ -36,7 +36,6 @@ defmodule HoloshareServer.UDPServer do
 
 
   def handle_info({:udp, socket, ip, port, payload}, state) do
-    Logger.debug "#{inspect socket} [#{Helpers.format_ip(ip)}] #{inspect port}: #{payload}"
     MessageHandler.recv_message(state[:message_handler], ip, port, payload)
     {:noreply, state}
   end

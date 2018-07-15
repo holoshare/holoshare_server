@@ -36,13 +36,18 @@ defmodule HoloshareServer.MessageHandler do
     {:noreply, state}
   end
 
-  defp handle_message(ip, port, %{type: "INIT"}, state) do
+  defp handle_message(ip, port, %{"type" => "INIT"}, state) do
     UDPServer.send_message(
       state[:udp_pid],
       ip,
       port,
       Poison.encode! %{type: "resp", text: "HELLO"}
     )
+  end
+
+  defp handle_message(_ip, _port, msg, _state) do
+    Logger.debug "Unhandled message"
+    Logger.debug inspect(msg)
   end
 
 end
