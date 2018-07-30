@@ -1,5 +1,6 @@
 defmodule HoloshareServer.SessionSupervisor do
   use DynamicSupervisor
+  require Logger
 
   alias HoloshareServer.SharedSession
 
@@ -14,7 +15,23 @@ defmodule HoloshareServer.SessionSupervisor do
   end
 
   def start_child(id) do
-    spec = {SharedSession, name: {:global, id}}
+    spec = {SharedSession, name: {:global, id}, session_id: id, marker_id: id}
     DynamicSupervisor.start_child(@name, spec)
+  end
+  
+  def get_session(id) do
+    case :global.whereis_name(id) do
+      :undefined -> 
+        {:ok, pid} = start_child(id)
+        pid
+      pid -> pid
+    end
+  end
+  
+  def session_exists?(id) do
+    case :global.whereis_name(id) do
+      :undefined -> false
+      _ -> true
+    end
   end
 end
