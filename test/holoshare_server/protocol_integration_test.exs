@@ -5,6 +5,7 @@ defmodule HoloshareServerTest.ProtocolIntegrationTest do
   alias HoloshareServer.SessionSupervisor
   alias HoloshareServer.SharedSession
   alias HoloshareServer.Helpers
+  alias HoloshareServer.Session
 
   @name :test_udp
   @localhost {127, 0, 0, 1}
@@ -52,10 +53,15 @@ defmodule HoloshareServerTest.ProtocolIntegrationTest do
     %{server: pid, client: client}
   end
 
+  defp add_generic_member(session_id) do
+    pid = SessionSupervisor.get_session(session_id)
+    SharedSession.add_member(pid, %Session.User{ip: Helpers.format_ip(@localhost), port: @client_port})
+  end
+
   test "Check if INIT works", %{client: client} do
     msg = Poison.encode!(%{
       type: "INIT",
-      user_id: @user_id,
+      username: @user_id,
       session_id: @session_id
     })
     :gen_udp.send(client, @localhost, @server_port, msg)
@@ -65,13 +71,21 @@ defmodule HoloshareServerTest.ProtocolIntegrationTest do
       "session" => %{
         "id" => @session_id,
         "marker_id" => @session_id,
-        "members" => [],
+        "members" => [
+          %{
+            "username" => @user_id,
+            "ip" => "127.0.0.1",
+            "port" => @client_port,
+            "id" => nil
+          },
+        ],
         "objects" => []
       }}
   end
-  
+
   test "Check if ACTION works with add", %{client: client} do
     SessionSupervisor.start_child(@session_id)
+    add_generic_member(@session_id)
     msg = Poison.encode! %{
       type: "ACTION",
       user_id: @user_id,
@@ -84,9 +98,10 @@ defmodule HoloshareServerTest.ProtocolIntegrationTest do
       Helpers.stringify_keys(
         %{type: "CHANGE", data: %{objects: [@test_object]}})
   end
-  
+
   test "Check if ACTION works with change", %{client: client} do
     {:ok, session_pid} = SessionSupervisor.start_child(@session_id)
+    add_generic_member(@session_id)
     SharedSession.add_object(session_pid, @test_object)
     msg = Poison.encode! %{
       type: "ACTION",
@@ -100,9 +115,10 @@ defmodule HoloshareServerTest.ProtocolIntegrationTest do
       Helpers.stringify_keys(
         %{type: "CHANGE", data: %{objects: [@changed_object]}})
   end
-  
+
   test "Check if ACTION works with delete", %{client: client} do
     {:ok, session_pid} = SessionSupervisor.start_child(@session_id)
+    add_generic_member(@session_id)
     SharedSession.add_object(session_pid, @test_object)
     msg = Poison.encode! %{
       type: "ACTION",

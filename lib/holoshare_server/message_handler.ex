@@ -4,6 +4,7 @@ defmodule HoloshareServer.MessageHandler do
 
   alias HoloshareServer.SessionSupervisor
   alias HoloshareServer.SharedSession
+  alias HoloshareServer.Session
   alias HoloshareServer.UDPServer
   alias HoloshareServer.Helpers
 
@@ -40,9 +41,13 @@ defmodule HoloshareServer.MessageHandler do
   defp handle_message(ip, port, %{type: "INIT"} = msg, state) do
     session_pid = SessionSupervisor.get_session(msg[:session_id])
     session = case session_pid do 
-      nil -> nil
-      pid -> SharedSession.get_session(pid)
-    end
+                nil -> nil
+                pid ->
+                  SharedSession.add_member(
+                    session_pid,
+                    %Session.User{ip: Helpers.format_ip(ip), port: port, username: msg[:username]})
+                  SharedSession.get_session(pid)
+              end
     UDPServer.send_message(
       state[:udp_pid],
       ip,
@@ -55,7 +60,11 @@ defmodule HoloshareServer.MessageHandler do
     if SessionSupervisor.session_exists?(msg[:session_id]) do
       session_pid = SessionSupervisor.get_session(msg[:session_id])
       result = SharedSession.preform_action(session_pid, msg[:data])
-      UDPServer.broadcast(state[:udp_pid], Poison.encode!(%{data: result, type: "CHANGE"}), [{ip, port}])
+      client_list = SharedSession.get_session(session_pid)
+      |> Map.get(:members)
+      |> Enum.map(fn x -> {Helpers.parse_ip!(x.ip), x.port} end)
+      # TODO: Handle the JSON encoding errors and the parse_ip!
+      UDPServer.broadcast(state[:udp_pid], Poison.encode!(%{data: result, type: "CHANGE"}), client_list)
     end
     SessionSupervisor.get_session(msg[:session_id])
   end
