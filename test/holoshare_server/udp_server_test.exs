@@ -22,4 +22,19 @@ defmodule HoloshareServerTest.UDPServerTest do
     UDPServer.send_message(@name, @localhost, @client_port, "TEST")
     assert_receive {:udp, _port, @localhost, @server_port, "TEST"}
   end
+
+  test "Check if broadcast works with more than one client" do
+    client2_port = @client_port + 1
+    {:ok, _client2} = :gen_udp.open(client2_port, [:binary])
+    UDPServer.broadcast(
+       @name,
+       "TEST",
+       [
+         {@localhost, @client_port},
+         {@localhost, client2_port},
+       ])
+    assert_receive {:udp, _port, @localhost, @server_port, "TEST"}
+    assert_receive {:udp, _port, @localhost, @server_port, "TEST"}
+ 
+  end
 end
