@@ -7,7 +7,8 @@ defmodule HoloshareServer.SharedSession do
       struct(
         Session,
         %{
-          marker_id: opts[:marker_id]
+          marker_id: opts[:marker_id],
+          id: opts[:session_id]
         }
       )
     end, opts)
@@ -53,6 +54,7 @@ defmodule HoloshareServer.SharedSession do
   def add_object(name, obj) do
     Agent.update(name,
       fn x -> Map.put(x, :objects, [obj | x.objects]) end)
+    obj
   end
 
   def remove_object(name, obj) do
@@ -66,22 +68,28 @@ defmodule HoloshareServer.SharedSession do
   end
 
   def update_object(name, obj) do
-    session = get_session(name)
-    new_object_list = update_object_in_list(session.objects, obj)
+    new_object_list = get_session(name)
+    |> Map.get(:objects)
+    |> update_object_in_list(obj)
     Agent.update(name,
       &(Map.put(&1, :objects, new_object_list)))
+    get_session(name)
+    |> Map.get(:objects)
+    |> Enum.find(fn x -> x[:id] == obj[:id] end)
   end
 
   def preform_action(name, %{type: "add", action: action}) do
     add_object(name, action)
+    %{objects: [action]}
   end
 
   def preform_action(name, %{type: "change", action: action}) do
-    update_object(name, action)
+    %{objects: [update_object(name, action)]}
   end
 
   def preform_action(name, %{type: "remove", action: action}) do
     remove_object(name, action)
+    %{removed_objects: [action[:id]]}
   end
 
   def preform_action(name, _action) do
